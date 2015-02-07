@@ -6,11 +6,11 @@
 
 class Program {
     public static void main(String[] args) {
-        Percolation myPerc = new Percolation(4);
-        myPerc.open(1,3);
-        myPerc.open(1,4);
-        myPerc.open(2,3);
-        myPerc.open(2,4);
+        PercolationStats pc = new PercolationStats(2, 100000);
+        System.out.println(pc.mean());
+        System.out.println(pc.stddev());
+        System.out.println(pc.confidenceLo());
+        System.out.println(pc.confidenceHi());
     }
 }
 
@@ -21,8 +21,12 @@ public class Percolation {
     
     public Percolation(int N) {
         this.N = N;
-        grid = new WeightedQuickUnionUF(N*N + 1);
+        grid = new WeightedQuickUnionUF(N*N + 2);
         openGrid = new int[N*N + 1];
+        for(int i = 1; i<=N; i++) {                //Create virtual nodes
+            grid.union(0, i);
+            grid.union((N*(N-1)) + i, N*N+1);
+        }
     }
     
     private int xyToNode(int x, int y) {
@@ -35,40 +39,41 @@ public class Percolation {
     }
     
     public boolean isFull(int i, int j) {
-        return !isOpen(i, j);
+        safetyCheck(i, j);
+        int aNode = xyToNode(i, j);
+        return (isOpen(i, j) && grid.connected(0, aNode));
+    }
+    
+    public boolean percolates() {
+        return grid.connected(0,N*N+1);
     }
     
     public void open(int i, int j) {
         safetyCheck(i, j);
         int Node = xyToNode(i, j);
-        System.out.println(Node);
         if(openGrid[Node] != 0) return;
         openGrid[Node] = -1;
         if(i > 1) {  //Join Up if not on top row
             if(isOpen(i-1, j)) {
                 grid.union(Node, (Node - N));
-                System.out.println("JoinedUP");
             };
         };
         
         if(i < N) {         //Joind Down if not bottom row
             if(isOpen(i+1, j)) {
                 grid.union(Node, Node + N);
-                System.out.println("JoinedDOWN");
             };
         };
         
         if(Node % N != 0) {    //Join Right if not right edge
             if(isOpen(i, j+1)) {
                 grid.union(Node, Node + 1);
-                System.out.println("JoinedRIGHT");
             };
         };
            
            if((Node - 1) % N != 0) {  //Join Left if not left edge
                if(isOpen(i, j-1)) {
                    grid.union(Node, Node - 1);
-                   System.out.println("JoinedLEFT");
                };
         };
     }
@@ -78,4 +83,41 @@ public class Percolation {
         if(j <= 0 || j > N) throw new IndexOutOfBoundsException("row index j out of bounds");
     }
     
+}
+
+class PercolationStats {
+    private double ratio[];
+    public PercolationStats(int N, int T) {
+        ratio = new double[T];
+        for(int ii=0; ii<T; ii++) {
+            double counter = 0;
+            Percolation aGrid = new Percolation(N);
+            while(!aGrid.percolates()) {
+                int i = StdRandom.uniform(1, N+1);
+                int j = StdRandom.uniform(1, N+1);
+//System.out.print("("+i+", "+j+") ");
+                if(!aGrid.isOpen(i, j)) {              //Open if not previously opened
+                    aGrid.open(i, j);
+                    counter++;
+                };
+            }
+            ratio[ii] = counter / ((N*N));
+        };
+    }
+    
+    public double mean() {
+        return StdStats.mean(ratio);
+    }
+    
+    public double stddev() {
+        return StdStats.stddev(ratio);
+    }
+    
+    public double confidenceLo() {
+        return mean() - ((1.96 * stddev()) / (Math.sqrt(ratio.length)));
+    }
+    
+    public double confidenceHi() {
+    return mean() + ((1.96 * stddev()) / (Math.sqrt(ratio.length)));
+    }
 }
