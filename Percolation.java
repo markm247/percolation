@@ -6,7 +6,7 @@
 
 class Program {
     public static void main(String[] args) {
-        PercolationStats pc = new PercolationStats(2, 100000);
+        PercolationStats pc = new PercolationStats(2, 100);
         System.out.println(pc.mean());
         System.out.println(pc.stddev());
         System.out.println(pc.confidenceLo());
